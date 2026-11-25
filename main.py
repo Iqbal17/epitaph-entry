@@ -42,6 +42,13 @@ Pass 2: the second draft was "I lived, I laughed, I left the Wi-Fi
     which kills a one-read laugh. Rebuilt as "and I took the Wi-Fi
     password with me" - the "and" gives the three-beat rhythm, and "with
     me" is the whole joke: he is gone and so is the password.
+
+Revision note (Pass 3): the chosen line is unchanged - same 58
+    characters, same words, same punch. The only addition is a byte-length
+    gate guard (entry_byte_length, checked in main()): the gate counts
+    characters, but the file on disk is bytes, so the guard makes sure a
+    future non-ASCII slip can never push the written file past the limit
+    unnoticed. The line itself was not touched.
 """
 
 import os
@@ -61,6 +68,16 @@ def check_gate(text):
     return True
 
 
+def entry_byte_length(text):
+    """Byte length of the entry as UTF-8.
+
+    The gate counts characters, but the file on disk is bytes; for a line
+    with only ASCII the two agree, so this guard catches any future
+    non-ASCII slip before the file is written.
+    """
+    return len(text.encode("utf-8"))
+
+
 def entry_path():
     """$MAKEFUN_OUTPUT_DIR, falling back to /output."""
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
@@ -69,6 +86,8 @@ def entry_path():
 
 def main():
     check_gate(LINE)
+    if entry_byte_length(LINE) > MAX_CHARS:
+        raise ValueError("entry exceeds 150 bytes, got %d" % entry_byte_length(LINE))
     path = entry_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
